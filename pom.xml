@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.autopulse</groupId>
+    <artifactId>AutoPulse</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+    <properties>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- Dependency versions — change version in ONE place, updates everywhere -->
+        <selenium.version>4.18.1</selenium.version>
+        <testng.version>7.9.0</testng.version>
+        <rest.assured.version>5.4.0</rest.assured.version>
+        <extentreports.version>5.1.1</extentreports.version>
+        <webdrivermanager.version>5.7.0</webdrivermanager.version>
+        <jackson.version>2.16.1</jackson.version>
+        <apache.poi.version>5.2.5</apache.poi.version>
+        <lombok.version>1.18.30</lombok.version>
+    </properties>
+
+    <dependencies>
+
+        <!-- SELENIUM — Browser automation -->
+        <dependency>
+            <groupId>org.seleniumhq.selenium</groupId>
+            <artifactId>selenium-java</artifactId>
+            <version>${selenium.version}</version>
+        </dependency>
+
+        <!-- WEBDRIVER MANAGER — Auto downloads Chrome/Firefox drivers -->
+        <!-- No more manual chromedriver downloads ever again -->
+        <dependency>
+            <groupId>io.github.bonigarcia</groupId>
+            <artifactId>webdrivermanager</artifactId>
+            <version>${webdrivermanager.version}</version>
+        </dependency>
+
+        <!-- TESTNG — Test framework, annotations, parallel execution -->
+        <dependency>
+            <groupId>org.testng</groupId>
+            <artifactId>testng</artifactId>
+            <version>${testng.version}</version>
+        </dependency>
+
+        <!-- REST ASSURED — API testing -->
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>rest-assured</artifactId>
+            <version>${rest.assured.version}</version>
+        </dependency>
+
+        <!-- EXTENT REPORTS — Beautiful HTML test reports -->
+        <dependency>
+            <groupId>com.aventstack</groupId>
+            <artifactId>extentreports</artifactId>
+            <version>${extentreports.version}</version>
+        </dependency>
+
+        <!-- JACKSON — Convert JSON to Java objects and back -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+
+        <!-- APACHE POI — Read/write Excel files for test data -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>${apache.poi.version}</version>
+        </dependency>
+
+        <!-- LOMBOK — Reduces boilerplate Java code -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>${lombok.version}</version>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- MAVEN SUREFIRE — Runs TestNG tests via Maven -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
+                <configuration>
+                    <suiteXmlFiles>
+                        <suiteXmlFile>
+                            src/test/resources/testng.xml
+                        </suiteXmlFile>
+                    </suiteXmlFiles>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
