@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
+
+<suite name="AutoPulse Test Suite" verbose="1">
+
+    <test name="Smoke Tests">
+        <classes>
+            <class name="com.autopulse.tests.ui.SmokeTest"/>
+        </classes>
+    </test>
+
+</suite>
