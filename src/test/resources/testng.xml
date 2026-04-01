@@ -9,4 +9,10 @@
         </classes>
     </test>
 
+    <test name="Login Tests">
+        <classes>
+            <class name="com.autopulse.tests.ui.LoginTest"/>
+        </classes>
+    </test>
+
 </suite>
