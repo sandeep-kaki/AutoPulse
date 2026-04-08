@@ -3,9 +3,13 @@ package com.autopulse.tests.ui;
 import com.autopulse.pages.HomePage;
 import com.autopulse.pages.LoginPage;
 import com.autopulse.tests.BaseTest;
+import com.autopulse.utils.ExcelReader;
+import com.autopulse.utils.ExtentReportManager;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+
+import java.util.Map;
 
 /**
  * LoginTest - Tests for login functionality.
@@ -111,4 +115,86 @@ public class LoginTest extends BaseTest {
 
         System.out.println("✅ Empty credentials kept user on login page");
     }
+
+    // Add this import at the top of the file:
+    // import com.autopulse.utils.ExcelReader;
+    // import java.util.Map;
+
+    private static final String LOGIN_DATA_PATH =
+            "src/test/resources/testdata/loginData.xlsx";
+
+    /**
+     * @DataProvider — supplies test data to the test method.
+     *
+     * This method returns Object[][] — a 2D array.
+     * Each inner array = one test execution.
+     * TestNG calls the test once for EACH row.
+     *
+     * ExcelReader reads your loginData.xlsx and converts
+     * it to the Object[][] format TestNG needs.
+     */
+    @org.testng.annotations.DataProvider(name = "loginDataProvider")
+    public Object[][] loginDataProvider() {
+        return ExcelReader.getTestDataAs2DArray(
+                LOGIN_DATA_PATH, "Sheet1"
+        );
+    }
+
+    /**
+     * Data-driven login test — runs once per Excel row.
+     *
+     * @param testData - one row from Excel as a Map
+     *                   keys = column headers
+     *                   values = cell values
+     *
+     * Same test method. Different data each time.
+     * One method covers: valid login, wrong password,
+     * invalid email, unregistered user — all from Excel.
+     */
+    @Test(
+            dataProvider = "loginDataProvider",
+            description = "Data-driven login test from Excel"
+    )
+    public void verifyLoginDataDriven(Map<String, String> testData) {
+
+        String email          = testData.get("email");
+        String password       = testData.get("password");
+        String expectedResult = testData.get("expectedResult");
+        String description    = testData.get("testDescription");
+
+        System.out.println("🧪 Running: " + description);
+        System.out.println("   Email: " + email);
+        System.out.println("   Expected: " + expectedResult);
+
+        ExtentReportManager.logInfo("Scenario: " + description);
+        ExtentReportManager.logInfo("Email: " + email);
+
+        // ACT
+        loginPage.loginAs(email, password);
+
+        // ASSERT based on expected result column
+        if (expectedResult.equals("success")) {
+
+            HomePage homePage = new HomePage(driver);
+            Assert.assertTrue(
+                    homePage.isLoggedIn(),
+                    "Expected successful login but user is not logged in"
+            );
+            ExtentReportManager.logPass(
+                    "Login succeeded as expected for: " + email
+            );
+
+        } else {
+
+            Assert.assertTrue(
+                    loginPage.isErrorMessageDisplayed(),
+                    "Expected error message but none appeared"
+            );
+            ExtentReportManager.logPass(
+                    "Login correctly rejected with error for: " + email
+            );
+        }
+    }
+
+
 }
