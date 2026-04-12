@@ -138,4 +138,58 @@ public class BasePage {
                         .equals("complete")
         );
     }
+
+    /**
+     * closeAdPopupIfPresent() - Closes the ad overlay
+     * on automationexercise.com if it appears.
+     *
+     * WHY two approaches?
+     * The popup has a close button we try first.
+     * If that fails — JavaScript forcefully removes
+     * the overlay from the page DOM entirely.
+     * Belt AND suspenders approach.
+     */
+    protected void closeAdPopupIfPresent() {
+        try {
+            // The ad popup close button on this site
+            By adCloseButton = By.xpath(
+                    "//div[@id='ad_position_box']//button" +
+                            " | //ins[@class='adsbygoogle']//button" +
+                            " | //div[contains(@id,'ad')]//button[@class='close']"
+            );
+
+            // Short wait — don't waste time if no popup
+            org.openqa.selenium.support.ui.WebDriverWait shortWait =
+                    new org.openqa.selenium.support.ui.WebDriverWait(
+                            driver, java.time.Duration.ofSeconds(3)
+                    );
+
+            try {
+                org.openqa.selenium.WebElement closeBtn = shortWait.until(
+                        org.openqa.selenium.support.ui.ExpectedConditions
+                                .elementToBeClickable(adCloseButton)
+                );
+                closeBtn.click();
+                System.out.println("🚫 Ad popup closed");
+
+            } catch (Exception e) {
+                // No popup found — that's fine, continue
+            }
+
+            // Nuclear option — remove ALL ad elements via JavaScript
+            // This runs regardless, cleans any invisible overlays
+            ((org.openqa.selenium.JavascriptExecutor) driver)
+                    .executeScript(
+                            "var ads = document.querySelectorAll(" +
+                                    "'#ad_position_box, .adsbygoogle, " +
+                                    "[id*=\"google_ads\"], [id*=\"aswift\"]');" +
+                                    "ads.forEach(function(ad) { ad.remove(); });"
+                    );
+
+        } catch (Exception e) {
+            // Silent fail — never let popup handling break the test
+            System.out.println("⚠️ Ad handling skipped: "
+                    + e.getMessage());
+        }
+    }
 }

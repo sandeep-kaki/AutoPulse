@@ -65,6 +65,7 @@ public class BaseTest {
 
         // Navigate to application
         driver.get(config.getBaseUrl());
+        closeAds();
         ExtentReportManager.logInfo(
                 "Browser opened. Navigated to: " + config.getBaseUrl()
         );
@@ -120,6 +121,18 @@ public class BaseTest {
     public void tearDownSuite() {
         ExtentReportManager.flushReport();
         System.out.println("✅ AutoPulse Test Suite Complete.");
+    }
+
+    protected void closeAds() {
+        try {
+            ((org.openqa.selenium.JavascriptExecutor) driver)
+                    .executeScript(
+                            "var ads = document.querySelectorAll(" +
+                                    "'#ad_position_box, .adsbygoogle, " +
+                                    "[id*=\"google_ads\"], [id*=\"aswift\"]');" +
+                                    "ads.forEach(function(ad) { ad.remove(); });"
+                    );
+        } catch (Exception ignored) {}
     }
 
     private String getStatusText(int status) {

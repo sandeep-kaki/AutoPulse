@@ -52,11 +52,24 @@ public class DriverManager {
 
                 ChromeOptions chromeOptions = new ChromeOptions();
 
-                // Add useful Chrome settings
+                // Existing args
                 chromeOptions.addArguments("--start-maximized");
                 chromeOptions.addArguments("--disable-notifications");
-                chromeOptions.addArguments(
-                        "--disable-blink-features=AutomationControlled");
+                chromeOptions.addArguments("--disable-blink-features=AutomationControlled");
+
+                // ADD THESE — blocks popups and ads
+                chromeOptions.addArguments("--disable-popup-blocking");
+                chromeOptions.addArguments("--block-new-web-contents");
+                chromeOptions.addArguments("--disable-extensions");
+                chromeOptions.addArguments("--no-sandbox");
+                chromeOptions.addArguments("--disable-dev-shm-usage");
+
+                // Chrome preferences — block ads at browser level
+                java.util.Map<String, Object> prefs = new java.util.HashMap<>();
+                prefs.put("profile.default_content_setting_values.ads", 2);
+                prefs.put("profile.default_content_setting_values.popups", 2);
+                prefs.put("profile.default_content_setting_values.notifications", 2);
+                chromeOptions.setExperimentalOption("prefs", prefs);
 
                 driver = new ChromeDriver(chromeOptions);
                 break;

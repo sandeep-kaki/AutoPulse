@@ -122,5 +122,6 @@ public class LoginPage extends BasePage {
     public void navigateToLoginPage() {
         driver.get("https://automationexercise.com/login");
         waitForPageLoad();
+        closeAdPopupIfPresent();
     }
 }
