@@ -1,6 +1,5 @@
 # ─────────────────────────────────────────────────────
 # AutoPulse CI/CD Pipeline
-# Runs automatically on every push to main branch
 # ─────────────────────────────────────────────────────
 
 name: AutoPulse CI Pipeline
@@ -12,9 +11,6 @@ on:
     branches: [ main ]
   workflow_dispatch:
   schedule:
-    # Full regression every night at midnight IST
-    # Cron: minute hour day month weekday
-    # "30 18 * * *" = 18:30 UTC = midnight IST
     - cron: '30 18 * * *'
 
 jobs:
@@ -51,13 +47,30 @@ jobs:
           sudo apt-get install -y google-chrome-stable
           google-chrome --version
 
+      - name: Create config.properties
+        run: |
+          mkdir -p src/test/resources
+          cat > src/test/resources/config.properties << EOF
+          base.url=https://automationexercise.com
+          browser=chrome
+          headless=false
+          implicit.wait=10
+          explicit.wait=15
+          page.load.timeout=60
+          api.base.url=https://automationexercise.com/api
+          reports.path=reports/
+          screenshots.path=reports/screenshots/
+          ai.enabled=true
+          ai.api.key=placeholder
+          ai.model=gemini-2.0-flash
+          ai.max.tokens=100
+          EOF
+
       - name: Run Smoke Tests
         run: mvn test -B -Dgroups="smoke"
         env:
           CI: true
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        # -Dgroups="smoke" tells TestNG to run only
-        # tests tagged with @Test(groups = {"smoke"})
 
       - name: Upload Smoke Report
         uses: actions/upload-artifact@v4
@@ -70,8 +83,6 @@ jobs:
   regression-tests:
     name: Full Regression (Nightly)
     runs-on: ubuntu-latest
-    # Only run full regression on schedule or manual trigger
-    # NOT on every push — saves CI minutes
     if: github.event_name == 'schedule' ||
       github.event_name == 'workflow_dispatch'
 
@@ -102,6 +113,25 @@ jobs:
             | sudo tee /etc/apt/sources.list.d/google-chrome.list
           sudo apt-get update -q
           sudo apt-get install -y google-chrome-stable
+
+      - name: Create config.properties
+        run: |
+          mkdir -p src/test/resources
+          cat > src/test/resources/config.properties << EOF
+          base.url=https://automationexercise.com
+          browser=chrome
+          headless=false
+          implicit.wait=10
+          explicit.wait=15
+          page.load.timeout=60
+          api.base.url=https://automationexercise.com/api
+          reports.path=reports/
+          screenshots.path=reports/screenshots/
+          ai.enabled=true
+          ai.api.key=placeholder
+          ai.model=gemini-2.0-flash
+          ai.max.tokens=100
+          EOF
 
       - name: Run Full Regression Suite
         run: mvn test -B
