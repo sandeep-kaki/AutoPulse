@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
+
+<suite name="AutoPulse Test Suite" verbose="1">
+
+    <!-- Register our listener — watches ALL tests -->
+    <listeners>
+        <listener class-name=
+                          "com.autopulse.tests.AutoPulseListener"/>
+    </listeners>
+
+    <test name="Smoke Tests">
+        <classes>
+            <class name="com.autopulse.tests.ui.SmokeTest"/>
+        </classes>
+    </test>
+
+    <test name="Login Tests">
+        <classes>
+            <class name="com.autopulse.tests.ui.LoginTest"/>
+        </classes>
+    </test>
+
+    <test name="Product Tests">
+        <classes>
+            <class name="com.autopulse.tests.ui.ProductTest"/>
+        </classes>
+    </test>
+
+    <test name="User API Tests">
+        <classes>
+            <class name="com.autopulse.tests.api.UserApiTest"/>
+        </classes>
+    </test>
+
+
+</suite>
