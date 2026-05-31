@@ -83,8 +83,8 @@ jobs:
   regression-tests:
     name: Full Regression (Nightly)
     runs-on: ubuntu-latest
-    if: github.event_name == 'schedule' ||
-      github.event_name == 'workflow_dispatch'
+#    if: github.event_name == 'schedule' ||     # Commented to check why the issue with full regression test
+#      github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Checkout Code
