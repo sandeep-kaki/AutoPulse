@@ -39,3 +39,6 @@ build/
 .DS_Store
 
 src/test/resources/config.properties
+
+reports/
+reports/screenshots/

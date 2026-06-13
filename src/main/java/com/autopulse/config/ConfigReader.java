@@ -109,7 +109,7 @@ public class ConfigReader {
     }
 
     public String getAiApiKey() {
-        String envKey = System.getenv("GEMINI_API_KEY");
+        String envKey = System.getenv("GROQ_API_KEY");
         if (envKey != null && !envKey.isEmpty()) {
             return envKey;
         }

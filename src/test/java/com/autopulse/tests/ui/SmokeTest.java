@@ -14,44 +14,44 @@ import org.testng.annotations.Test;
  */
 public class SmokeTest extends BaseTest {
 
-    @Test(groups = {"smoke"},
-            description = "Verify homepage loads correctly")
-    public void verifyHomepageTitleAndLaunch() {
-        System.out.println("🚀 AutoPulse smoke test running...");
-
-        // Get the page title
-        String actualTitle = driver.getTitle();
-        System.out.println("📄 Page title: " + actualTitle);
-
-        // Verify the URL is correct
-        String currentUrl = driver.getCurrentUrl();
-        System.out.println("🌐 Current URL: " + currentUrl);
-
-        // Assert title contains expected text
-        Assert.assertTrue(
-                actualTitle.contains("Automation"),
-                "Homepage title should contain 'Automation' but was: "
-                        + actualTitle
-        );
-
-        System.out.println("✅ AutoPulse smoke test PASSED!");
-    }
-
-    // Intentionally failing to see how AI layer is working
 //    @Test(groups = {"smoke"},
 //            description = "Verify homepage loads correctly")
 //    public void verifyHomepageTitleAndLaunch() {
 //        System.out.println("🚀 AutoPulse smoke test running...");
 //
+//        // Get the page title
 //        String actualTitle = driver.getTitle();
 //        System.out.println("📄 Page title: " + actualTitle);
 //
-//        // INTENTIONALLY WRONG — to test AI analysis
-//        Assert.assertEquals(
-//                actualTitle,
-//                "This Title Will Never Match",
-//                "Intentional failure to test AI layer"
+//        // Verify the URL is correct
+//        String currentUrl = driver.getCurrentUrl();
+//        System.out.println("🌐 Current URL: " + currentUrl);
+//
+//        // Assert title contains expected text
+//        Assert.assertTrue(
+//                actualTitle.contains("Automation"),
+//                "Homepage title should contain 'Automation' but was: "
+//                        + actualTitle
 //        );
+//
+//        System.out.println("✅ AutoPulse smoke test PASSED!");
 //    }
+
+    // Intentionally failing to see how AI layer is working
+    @Test(groups = {"smoke"},
+            description = "Verify homepage loads correctly")
+    public void verifyHomepageTitleAndLaunch() {
+        System.out.println("🚀 AutoPulse smoke test running...");
+
+        String actualTitle = driver.getTitle();
+        System.out.println("📄 Page title: " + actualTitle);
+
+        // INTENTIONALLY WRONG — to test AI analysis
+        Assert.assertEquals(
+                actualTitle,
+                "This Title Will Never Match",
+                "Intentional failure to test AI layer"
+        );
+    }
 
 }

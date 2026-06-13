@@ -13,23 +13,48 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 
 /**
- * FailureAnalyser — AI layer using Google Gemini API.
+ * FailureAnalyser — AI layer using Groq API (Llama 3.3 70B).
  *
- * WHY GEMINI?
- * Completely free tier — no credit card, no subscription.
- * 1500 requests/day free. More than enough for test runs.
+ * WHY GROQ?
+ * Completely free tier — 14,400 requests/day, no credit card.
+ * Runs on custom LPU hardware — fastest inference available.
+ * Speaks OpenAI-compatible format — the universal AI API standard.
+ * Llama 3.3 70B supports function calling — needed for
+ * the Self-Healing Agent we build next.
  *
- * Gemini API endpoint structure is different from Claude:
- * URL contains the model name and API key as query param.
- * Request body uses "contents" instead of "messages".
+ * WHY OPENAI FORMAT MATTERS:
+ * OpenAI's message format (role + content) is the most widely
+ * adopted AI API standard on the planet. Learn it once, use it
+ * with Groq, OpenAI, Mistral, Together AI, and dozens more.
+ * Gemini had its own dialect — OpenAI format is the lingua franca.
+ *
+ * REQUEST FORMAT:
+ * {
+ *   "model": "llama-3.3-70b-versatile",
+ *   "messages": [
+ *     { "role": "system", "content": "persona/constraints" },
+ *     { "role": "user",   "content": "your prompt"         }
+ *   ],
+ *   "max_tokens": 300
+ * }
+ *
+ * RESPONSE FORMAT:
+ * {
+ *   "choices": [{
+ *     "message": {
+ *       "role": "assistant",
+ *       "content": "analysis here"
+ *     }
+ *   }]
+ * }
  */
 public class FailureAnalyser {
 
-    // Gemini API endpoint
-    // Model and key go in the URL itself
-    private static final String GEMINI_API_URL =
-            "https://generativelanguage.googleapis.com" +
-                    "/v1beta/models/%s:generateContent?key=%s";
+    // Groq endpoint — OpenAI-compatible chat completions
+    // Same path as OpenAI: /v1/chat/completions
+    // Only the base domain differs
+    private static final String GROQ_API_URL =
+            "https://api.groq.com/openai/v1/chat/completions";
 
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
@@ -44,9 +69,14 @@ public class FailureAnalyser {
     }
 
     /**
-     * analyse() — Takes failure details, returns AI analysis.
-     * Same interface as before — nothing else in AutoPulse
-     * needs to change. Only this class knows it's Gemini.
+     * analyse() — Public interface. Takes failure details,
+     * returns AI analysis as a string.
+     *
+     * NOTHING OUTSIDE THIS CLASS CHANGED.
+     * AutoPulseListener still calls analyse() the same way.
+     * ExtentReportManager still renders what this returns.
+     * This is Separation of Concerns working as designed —
+     * swap the AI engine, the rest of the framework is unaware.
      */
     public String analyse(String testName,
                           String errorMessage,
@@ -57,12 +87,21 @@ public class FailureAnalyser {
             return "AI analysis disabled in config.";
         }
 
+        // Validate key early — clear error beats cryptic 401
+        String apiKey = config.getAiApiKey();
+        if (apiKey == null || apiKey.isBlank()
+                || apiKey.equals("placeholder")) {
+            return "AI analysis unavailable: "
+                    + "GROQ_API_KEY is not configured. "
+                    + "Set ai.api.key in config.properties "
+                    + "or the GROQ_API_KEY environment variable.";
+        }
+
         try {
-            String prompt = buildPrompt(
+            String requestBody = buildRequestBody(
                     testName, errorMessage, stackTrace, pageUrl
             );
-            String requestBody = buildRequestBody(prompt);
-            String responseBody = callGeminiApi(requestBody);
+            String responseBody = callGroqApi(requestBody);
             return extractAnalysis(responseBody);
 
         } catch (Exception e) {
@@ -74,18 +113,79 @@ public class FailureAnalyser {
     }
 
     /**
-     * buildPrompt() — Lean prompt, under 100 words.
-     * Minimizes token usage per call.
+     * buildRequestBody() — Builds the OpenAI-format request.
+     *
+     * TWO MESSAGES — this is the key learning here:
+     *
+     * SYSTEM message: Sets the AI's persona before anything else.
+     * "You are a test automation expert" makes every response
+     * sharper and more specific than a raw prompt alone.
+     * The model reads this as its job description.
+     *
+     * USER message: The actual failure context and question.
+     * Kept under 100 words to minimise token usage.
+     *
+     * WHY SEPARATE SYSTEM AND USER?
+     * System sets WHO the AI is. User sets WHAT you're asking.
+     * This separation is what makes AI responses consistent
+     * across different kinds of questions.
+     */
+    private String buildRequestBody(String testName,
+                                    String errorMessage,
+                                    String stackTrace,
+                                    String pageUrl)
+            throws Exception {
+
+        ObjectNode root = objectMapper.createObjectNode();
+
+        // Model name comes from config.properties
+        // ai.model=llama-3.3-70b-versatile
+        root.put("model", config.getAiModel());
+
+        // max_tokens — OpenAI format uses this key
+        // (Gemini used "maxOutputTokens" inside generationConfig)
+        root.put("max_tokens", config.getAiMaxTokens());
+
+        // Messages array — the core of OpenAI format
+        ArrayNode messages = objectMapper.createArrayNode();
+
+        // Message 1: SYSTEM — persona and constraints
+        // This sharpens every response without adding user tokens
+        ObjectNode systemMessage = objectMapper.createObjectNode();
+        systemMessage.put("role", "system");
+        systemMessage.put("content",
+                "You are a test automation expert. "
+                        + "Analyse Selenium test failures. "
+                        + "Be concise. Respond in exactly 3 bullets."
+        );
+        messages.add(systemMessage);
+
+        // Message 2: USER — the actual failure details
+        ObjectNode userMessage = objectMapper.createObjectNode();
+        userMessage.put("role", "user");
+        userMessage.put("content", buildPrompt(
+                testName, errorMessage, stackTrace
+        ));
+        messages.add(userMessage);
+
+        root.set("messages", messages);
+
+        return objectMapper.writeValueAsString(root);
+    }
+
+    /**
+     * buildPrompt() — Lean prompt, under 80 words.
+     * Goes inside the user message content.
+     * Kept short to minimise token usage per call.
      */
     private String buildPrompt(String testName,
                                String errorMessage,
-                               String stackTrace,
-                               String pageUrl) {
+                               String stackTrace) {
         return String.format(
-                "Selenium test failed: %s\n" +
-                        "Error: %s\n" +
-                        "Stack: %s\n" +
-                        "In 3 bullets: root cause, fix, prevention.",
+                "Selenium test failed: %s\n"
+                        + "Error: %s\n"
+                        + "Stack: %s\n"
+                        + "3 bullets: root cause, fix, prevention.",
                 testName,
                 errorMessage,
                 truncateStackTrace(stackTrace, 5)
@@ -93,85 +193,45 @@ public class FailureAnalyser {
     }
 
     /**
-     * buildRequestBody() — Gemini uses "contents" structure.
+     * callGroqApi() — HTTP POST to Groq endpoint.
      *
-     * Gemini request format:
-     * {
-     *   "contents": [{"parts": [{"text": "your prompt"}]}],
-     *   "generationConfig": {"maxOutputTokens": 100}
-     * }
+     * KEY DIFFERENCE FROM GEMINI:
+     * Gemini: API key in URL as ?key=YOUR_KEY
+     * Groq:   API key in Authorization header as Bearer token
      *
-     * Different from Claude's "messages" format —
-     * but same concept: send text, get text back.
+     * "Authorization: Bearer <key>" is the universal standard
+     * for REST API authentication. Used by OpenAI, Anthropic,
+     * Groq, Stripe, GitHub, and virtually every modern API.
+     * Gemini's ?key= approach was the odd one out.
+     *
+     * WHY BEARER IN HEADER IS BETTER THAN KEY IN URL:
+     * URL parameters appear in server logs, browser history,
+     * and proxy tool outputs. Headers do not.
+     * Never put secrets in URLs — that's a security principle
+     * worth remembering for your SDET career.
      */
-    private String buildRequestBody(String prompt)
+    private String callGroqApi(String requestBody)
             throws Exception {
-
-        ObjectNode root = objectMapper.createObjectNode();
-
-        // Contents array → parts array → text
-        ArrayNode contents = objectMapper.createArrayNode();
-        ObjectNode content = objectMapper.createObjectNode();
-        ArrayNode parts = objectMapper.createArrayNode();
-        ObjectNode part = objectMapper.createObjectNode();
-
-        part.put("text", prompt);
-        parts.add(part);
-        content.set("parts", parts);
-        contents.add(content);
-        root.set("contents", contents);
-
-        // Limit response tokens — minimize usage
-        ObjectNode genConfig =
-                objectMapper.createObjectNode();
-        genConfig.put("maxOutputTokens",
-                config.getAiMaxTokens());
-        root.set("generationConfig", genConfig);
-
-        return objectMapper.writeValueAsString(root);
-    }
-
-    /**
-     * callGeminiApi() — HTTP POST to Gemini endpoint.
-     *
-     * Key difference from Claude:
-     * API key goes in the URL as query parameter.
-     * No "x-api-key" header needed.
-     */
-    private String callGeminiApi(String requestBody)
-            throws Exception {
-
-        String url = String.format(
-                GEMINI_API_URL,
-                config.getAiModel(),
-                config.getAiApiKey()
-        );
 
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
+                .uri(URI.create(GROQ_API_URL))
                 .timeout(Duration.ofSeconds(30))
                 .header("Content-Type", "application/json")
+                // Bearer token — the universal auth standard
+                .header("Authorization",
+                        "Bearer " + config.getAiApiKey())
                 .POST(HttpRequest.BodyPublishers
                         .ofString(requestBody))
                 .build();
-
-        System.out.println(
-                "🤖 Calling Gemini AI for failure analysis..."
-        );
 
         HttpResponse<String> response = httpClient.send(
                 request,
                 HttpResponse.BodyHandlers.ofString()
         );
 
-        System.out.println(
-                "🤖 Gemini API response status: "
-                        + response.statusCode()
-        );
-
         if (response.statusCode() != 200) {
             throw new RuntimeException(
-                    "Gemini API error: "
+                    "Groq API error: "
                             + response.statusCode()
                             + " — " + response.body()
             );
@@ -181,18 +241,24 @@ public class FailureAnalyser {
     }
 
     /**
-     * extractAnalysis() — Pulls text from Gemini response.
+     * extractAnalysis() — Pulls text from Groq response.
      *
-     * Gemini response format:
+     * GROQ/OPENAI RESPONSE FORMAT:
      * {
-     *   "candidates": [{
-     *     "content": {
-     *       "parts": [{"text": "analysis here"}]
+     *   "choices": [{
+     *     "message": {
+     *       "role": "assistant",
+     *       "content": "analysis here"
      *     }
      *   }]
      * }
      *
-     * Navigate: candidates[0] → content → parts[0] → text
+     * Path: choices[0] → message → content
+     *
+     * Compare to Gemini's path:
+     * candidates[0] → content → parts[0] → text
+     *
+     * OpenAI format is one level shallower — cleaner to navigate.
      */
     private String extractAnalysis(String responseBody)
             throws Exception {
@@ -200,23 +266,18 @@ public class FailureAnalyser {
         JsonNode root =
                 objectMapper.readTree(responseBody);
 
-        JsonNode candidates = root.get("candidates");
-        if (candidates != null
-                && candidates.isArray()
-                && candidates.size() > 0) {
+        // Navigate: choices → first choice → message → content
+        JsonNode choices = root.get("choices");
+        if (choices != null
+                && choices.isArray()
+                && choices.size() > 0) {
 
-            JsonNode content =
-                    candidates.get(0).get("content");
-            if (content != null) {
-                JsonNode parts = content.get("parts");
-                if (parts != null
-                        && parts.isArray()
-                        && parts.size() > 0) {
-                    JsonNode text =
-                            parts.get(0).get("text");
-                    if (text != null) {
-                        return text.asText();
-                    }
+            JsonNode message =
+                    choices.get(0).get("message");
+            if (message != null) {
+                JsonNode content = message.get("content");
+                if (content != null) {
+                    return content.asText();
                 }
             }
         }
@@ -224,6 +285,11 @@ public class FailureAnalyser {
         return "Could not extract analysis from response.";
     }
 
+    /**
+     * truncateStackTrace() — Limits stack trace to N lines.
+     * Keeps the AI prompt short and focused.
+     * Full stack traces have 30-50 lines — 5 is enough context.
+     */
     private String truncateStackTrace(String stackTrace,
                                       int maxLines) {
         if (stackTrace == null)
