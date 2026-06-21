@@ -30,6 +30,10 @@ public class LoginPage extends BasePage {
     private By emailField =
             By.xpath("//input[@data-qa='login-email']");
 
+    // This locator is is not correct, kept to check the AI Layer
+//    private By emailField =
+//            By.xpath("//input[@data-qa='login-email-WRONG']");
+
     private By passwordField =
             By.xpath("//input[@data-qa='login-password']");
 

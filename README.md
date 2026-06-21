@@ -11,6 +11,11 @@ It tests [automationexercise.com](https://automationexercise.com)
 across UI and API layers, with GitHub Actions CI/CD integration
 and AI-powered failure analysis.
 
+When any test fails, AutoPulse automatically captures a
+screenshot, sends the failure context to Groq's Llama 3.3 70B,
+and embeds a structured root-cause analysis — Cause, Fix, and
+Prevention — directly inside the ExtentReport.
+
 ## Tech Stack
 
 | Layer | Technology |
@@ -21,21 +26,39 @@ and AI-powered failure analysis.
 | Build Tool | Apache Maven |
 | Reporting | ExtentReports 5.1 |
 | CI/CD | GitHub Actions |
-| AI Analysis | Claude API (coming soon) |
+| AI Analysis | Groq API — Llama 3.3 70B (llama-3.3-70b-versatile) |
 | Language | Java 17 |
 
 ## Project Structure
 
+```
 src/
 ├── main/java/com/autopulse/
 │   ├── config/       → ConfigReader (Singleton)
 │   ├── pages/        → Page Objects (POM)
 │   ├── api/          → REST Assured API clients
 │   ├── utils/        → DriverManager, Reports, Screenshots
-│   └── ai/           → AI Failure Analyser (coming soon)
+│   └── ai/           → FailureAnalyser — Groq AI failure analysis
 └── test/java/com/autopulse/tests/
-├── ui/           → Login, Product, Cart tests
-└── api/          → User API tests
+    ├── ui/           → Login, Product, Cart tests
+    └── api/          → User API tests
+```
+
+## AI Failure Analysis
+
+When a test fails, AutoPulse:
+1. Captures a screenshot at the point of failure
+2. Sends the error, stack trace, and test context to Groq
+3. Receives a structured analysis in the report:
+
+```
+🔍 Root Cause: [specific reason this test failed]
+🔧 Fix: [actionable suggested fix]
+🛡️ Prevention: [how to avoid this in future]
+```
+
+This turns a 30-minute manual debugging session into a
+3-minute read.
 
 ## How To Run
 
@@ -52,3 +75,10 @@ mvn test
 - ✅ Products — page load, search, detail page
 - ✅ Cart — add to cart, verify items, E2E flow
 - ✅ User API — create, verify, delete lifecycle
+
+## Roadmap
+
+- [ ] Self-Healing Agent — uses Groq function calling to
+  investigate locator failures, validate candidate fixes
+  against the live DOM, and distinguish stale locators
+  from genuine application bugs

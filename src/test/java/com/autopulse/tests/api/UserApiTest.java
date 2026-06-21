@@ -47,7 +47,7 @@ public class UserApiTest {
     public void setUp() {
         userEndpoints = new UserEndpoints();
         // Init report for API tests
-        ExtentReportManager.initReport();
+//        ExtentReportManager.initReport();
         System.out.println("🔌 API Test Suite Starting...");
         System.out.println("📧 Test email: " + testEmail);
     }
