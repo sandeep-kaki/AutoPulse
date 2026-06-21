@@ -102,7 +102,8 @@ public class FailureAnalyser {
                     testName, errorMessage, stackTrace, pageUrl
             );
             String responseBody = callGroqApi(requestBody);
-            return extractAnalysis(responseBody);
+            String rawAnalysis = extractAnalysis(responseBody);
+            return formatAsHtml(rawAnalysis);
 
         } catch (Exception e) {
             System.out.println("⚠️ AI analysis failed: "
@@ -182,10 +183,14 @@ public class FailureAnalyser {
                                String errorMessage,
                                String stackTrace) {
         return String.format(
-                "Selenium test failed: %s\n"
+                "Selenium test failed.\n"
+                        + "Test: %s\n"
                         + "Error: %s\n"
-                        + "Stack: %s\n"
-                        + "3 bullets: root cause, fix, prevention.",
+                        + "Stack: %s\n\n"
+                        + "Reply in EXACTLY this format, no other text:\n"
+                        + "CAUSE: [one sentence root cause]\n"
+                        + "FIX: [one sentence fix]\n"
+                        + "PREVENT: [one sentence prevention]",
                 testName,
                 errorMessage,
                 truncateStackTrace(stackTrace, 5)
@@ -310,5 +315,49 @@ public class FailureAnalyser {
         }
 
         return sb.toString();
+    }
+
+    private String extractLabel(String text, String label) {
+        int start = text.indexOf(label);
+        if (start == -1) return "Not available";
+        start += label.length();
+        int end = text.indexOf("\n", start);
+        if (end == -1) end = text.length();
+        return text.substring(start, end).trim();
+    }
+
+    private String formatAsHtml(String rawAnalysis) {
+        try {
+            String cause   = extractLabel(rawAnalysis, "CAUSE:");
+            String fix     = extractLabel(rawAnalysis, "FIX:");
+            String prevent = extractLabel(rawAnalysis, "PREVENT:");
+
+            return "<div style='font-family:Arial,sans-serif;"
+                    + "padding:10px;line-height:1.8;'>"
+
+                    + "<p style='margin:6px 0;'>"
+                    + "<span style='color:#ff6b6b;font-weight:bold;'>"
+                    + "🔍 Root Cause:&nbsp;</span>"
+                    + "<span style='color:#e0e0e0;'>"
+                    + cause + "</span></p>"
+
+                    + "<p style='margin:6px 0;'>"
+                    + "<span style='color:#ffd93d;font-weight:bold;'>"
+                    + "🔧 Fix:&nbsp;</span>"
+                    + "<span style='color:#e0e0e0;'>"
+                    + fix + "</span></p>"
+
+                    + "<p style='margin:6px 0;'>"
+                    + "<span style='color:#6bcb77;font-weight:bold;'>"
+                    + "🛡️ Prevention:&nbsp;</span>"
+                    + "<span style='color:#e0e0e0;'>"
+                    + prevent + "</span></p>"
+
+                    + "</div>";
+
+        } catch (Exception e) {
+            return "<p style='color:#e0e0e0;'>"
+                    + rawAnalysis.replace("\n", "<br>") + "</p>";
+        }
     }
 }
