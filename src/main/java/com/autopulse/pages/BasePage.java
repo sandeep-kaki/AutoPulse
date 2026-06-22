@@ -26,6 +26,35 @@ public class BasePage {
     protected WebDriver driver;
     protected WebDriverWait wait;
 
+    // Add near the top of the class, with other fields:
+
+    /**
+     * Tracks the last locator any click()/jsClick()/type() attempted.
+     *
+     * WHY ThreadLocal?
+     * Same reason as DriverManager — each parallel test thread
+     * tracks its OWN last-attempted locator. No cross-contamination
+     * between tests running simultaneously.
+     *
+     * WHY HERE IN BasePage?
+     * Tracking interaction attempts is a HOW concern — BasePage
+     * owns HOW. Every click/type already flows through here,
+     * so this is the natural place to record it without touching
+     * any Page Object.
+     */
+    private static ThreadLocal<By> lastAttemptedLocator =
+            new ThreadLocal<>();
+
+    /**
+     * getLastAttemptedLocator() — Lets the Self-Healing Agent
+     * ask "what was BasePage trying to interact with when
+     * the failure happened?"
+     */
+    public static By getLastAttemptedLocator() {
+        return lastAttemptedLocator.get();
+    }
+
+
     // Every page object receives the driver when created
     public BasePage(WebDriver driver) {
         this.driver = driver;
@@ -42,6 +71,7 @@ public class BasePage {
      * waitUntilClickable ensures the element is truly ready.
      */
     protected void click(By locator) {
+        lastAttemptedLocator.set(locator);
         WebElement element = wait.until(
                 ExpectedConditions.elementToBeClickable(locator)
         );
@@ -66,6 +96,7 @@ public class BasePage {
      */
     protected void jsClick(By locator) {
         // Remove iframes first to prevent renderer being busy
+        lastAttemptedLocator.set(locator);
         try {
             ((JavascriptExecutor) driver).executeScript(
                     "document.querySelectorAll('iframe')" +
@@ -108,6 +139,7 @@ public class BasePage {
      * ensures clean input every time.
      */
     protected void type(By locator, String text) {
+        lastAttemptedLocator.set(locator);
         WebElement element = wait.until(
                 ExpectedConditions.visibilityOfElementLocated(locator)
         );
