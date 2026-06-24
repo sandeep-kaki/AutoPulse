@@ -139,4 +139,35 @@ public class ExtentReportManager {
             System.out.println("📊 Report saved: " + reportPath);
         }
     }
+
+    /**
+     * attachHealingVerdict() — Renders the Self-Healing Agent's
+     * verdict as a colour-coded, expandable block.
+     *
+     * WHY CHECK verdict.startsWith("HEALED")?
+     * Our agent's system prompt FORCES it to respond starting with
+     * either "HEALED:" or "REAL_BUG:" — nothing else. This simple
+     * string check is all we need to know which colour/icon to show.
+     * We don't need to parse JSON or do anything fancy here — the
+     * prompt engineering did the hard work upstream.
+     */
+    public static void attachHealingVerdict(String verdict) {
+        boolean healed = verdict.startsWith("FOUND_FIX");
+
+        String colour = healed ? "#6bcb77" : "#ff6b6b";
+        String icon = healed
+                ? "🔧 Fix Found (Verified)"
+                : "🐛 Real Bug Suspected";
+
+        getTest().info(
+                "<details><summary>" + icon
+                        + " — click to expand agent investigation</summary><br>"
+                        + "<div style='color:" + colour
+                        + ";font-weight:bold;padding:8px;border-left:3px solid "
+                        + colour + ";margin-top:6px;'>"
+                        + verdict.replace("\n", "<br>")
+                        + "</div></details>"
+        );
+    }
+
 }

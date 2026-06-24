@@ -27,12 +27,12 @@ public class LoginPage extends BasePage {
     // Tests just call the action methods below.
     // =============================================
 
-    private By emailField =
-            By.xpath("//input[@data-qa='login-email']");
+//    private By emailField =
+//            By.xpath("//input[@data-qa='login-email']");
 
     // This locator is is not correct, kept to check the AI Layer
-//    private By emailField =
-//            By.xpath("//input[@data-qa='login-email-WRONG']");
+    private By emailField =
+            By.xpath("//input[@data-qa='login-email-OLD']");
 
     private By passwordField =
             By.xpath("//input[@data-qa='login-password']");

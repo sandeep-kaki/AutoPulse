@@ -1,6 +1,7 @@
 package com.autopulse.tests;
 
 import com.autopulse.ai.FailureAnalyser;
+import com.autopulse.ai.SelfHealingAgent;
 import com.autopulse.utils.ExtentReportManager;
 import com.autopulse.utils.ScreenshotUtil;
 import org.openqa.selenium.WebDriver;
@@ -49,64 +50,67 @@ public class AutoPulseListener implements ITestListener {
         System.out.println("🔴 Listener caught failure: "
                 + result.getName());
 
-        // ── Step 1: Collect failure details ──────────
-
         String testName = result.getName();
-
-        // The exception that caused the failure
         Throwable throwable = result.getThrowable();
         String errorMessage = throwable != null
                 ? throwable.getMessage()
-                : "No error message available";
-
-        // Convert stack trace to string
+                : "No error message";
         String stackTrace = throwable != null
                 ? getStackTraceAsString(throwable)
-                : "No stack trace available";
-
-        // Get current URL from browser
-        // result.getInstance() gives us the test class object
-        // We cast it to get the driver if available
-        String pageUrl = getCurrentUrl(result);
-
-        // ── Step 2: Take screenshot ───────────────────
+                : "No stack trace";
 
         WebDriver driver = getDriver(result);
-        String screenshotPath = null;
+        String pageUrl = getCurrentUrl(result);
 
+        String screenshotPath = null;
         if (driver != null) {
-            screenshotPath = ScreenshotUtil.capture(
-                    driver, testName
-            );
+            screenshotPath = ScreenshotUtil.capture(driver, testName);
         }
 
-        // ── Step 3: Call AI for analysis ─────────────
-
+        // ── Existing quick AI analysis — runs for EVERY failure ──
         System.out.println("🤖 Requesting AI analysis...");
         String aiAnalysis = failureAnalyser.analyse(
-                testName,
-                errorMessage,
-                stackTrace,
-                pageUrl
-        );
-        System.out.println("🤖 AI analysis received.");
-
-        // ── Step 4: Attach everything to report ──────
-
-        // Log failure in report
-        ExtentReportManager.logFail(
-                "Test FAILED: " + errorMessage
+                testName, errorMessage, stackTrace, pageUrl
         );
 
-        // Attach screenshot if captured
-        if (screenshotPath != null) {
-            ExtentReportManager.attachScreenshot(
-                    screenshotPath
-            );
+        com.aventstack.extentreports.ExtentTest test =
+                ExtentReportManager.getTest();
+
+        if (test != null) {
+            test.fail("❌ Test FAILED: " + errorMessage);
+
+            if (screenshotPath != null) {
+                try {
+                    test.addScreenCaptureFromPath(
+                            screenshotPath, "Failure Screenshot"
+                    );
+                } catch (Exception e) {
+                    System.out.println("Screenshot attach failed: "
+                            + e.getMessage());
+                }
+            }
+
+            test.info("<details><summary>🤖 AI Analysis"
+                    + " — click to expand</summary><br>"
+                    + aiAnalysis + "</details>");
         }
 
-        // Attach AI analysis
-        ExtentReportManager.attachAiAnalysis(aiAnalysis);
+        // ── NEW — Self-Healing Agent, ONLY for locator failures ──
+        if (isLocatorFailure(throwable) && driver != null) {
+            System.out.println(
+                    "🩺 Locator failure detected — waking up "
+                            + "Self-Healing Agent..."
+            );
+
+            SelfHealingAgent agent = new SelfHealingAgent(driver);
+            String verdict = agent.investigate(
+                    testName, errorMessage, stackTrace
+            );
+
+            System.out.println("🩺 Agent verdict: " + verdict);
+
+            ExtentReportManager.attachHealingVerdict(verdict);
+        }
     }
 
     @Override
@@ -193,5 +197,35 @@ public class AutoPulseListener implements ITestListener {
                     .append("\n");
         }
         return sb.toString();
+    }
+
+    /**
+     * isLocatorFailure() — Decides if this failure is worth
+     * waking up the Self-Healing Agent for.
+     *
+     * WHY CHECK EXCEPTION CLASS NAME?
+     * NoSuchElementException, StaleElementReferenceException, and
+     * TimeoutException (when waiting for an element) are Selenium's
+     * specific signals that "something about finding/using an
+     * element went wrong" — as opposed to AssertionError (business
+     * logic) or network exceptions (environment problems).
+     *
+     * The agent is expensive (multiple API calls). This filter
+     * keeps it focused on the ONE problem class it's actually
+     * designed to solve.
+     */
+    private boolean isLocatorFailure(Throwable t) {
+        if (t == null) return false;
+
+        String exceptionName = t.getClass().getSimpleName();
+        String message = t.getMessage();
+
+        return exceptionName.contains("NoSuchElement")
+                || exceptionName.contains("StaleElement")
+                || (exceptionName.contains("Timeout")
+                && message != null
+                && (message.contains("visibility")
+                || message.contains("element")
+                || message.contains("clickable")));
     }
 }

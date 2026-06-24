@@ -159,9 +159,14 @@ public class SelfHealingAgent {
                         + "is genuinely absent from the page). "
                         + "When confident, respond with EXACTLY one of these "
                         + "formats and nothing else: "
-                        + "'HEALED: <new locator> | <one line reasoning>' or "
+                        + "'FOUND_FIX: <new locator> | <one line, FACTUAL summary "
+                        + "of what validateLocator confirmed — do not speculate "
+                        + "about WHY the original locator broke, only state what "
+                        + "you verified exists now>' or "
                         + "'REAL_BUG: <one line reasoning>'. "
-                        + "Always use the tools to verify — never guess blindly."
+                        + "Always use the tools to verify — never guess blindly. "
+                        + "Never invent a backstory about renames or changes you "
+                        + "did not directly observe."
         );
         return msg;
     }
